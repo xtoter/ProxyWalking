@@ -33,17 +33,43 @@ func (h *Handler) getProxy() int {
 	return -1
 }
 func (h *Handler) handleRequest(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	var response *http.Response
+	cond := true
+	for cond {
+		err, response = h.goToOriginal(w, r)
+		if err == nil {
+			fmt.Println("sucsess")
+			cond = false
+		} else {
+			fmt.Println("error,repeat ")
+		}
+	}
+
+	defer response.Body.Close()
+	// Копируем заголовки ответа от удаленного сервера к клиенту
+	copyHeaders(w.Header(), response.Header)
+
+	// Отправляем статус и тело ответа клиенту
+	w.WriteHeader(response.StatusCode)
+
+	io.Copy(w, response.Body)
+	//
+
+}
+func (h *Handler) goToOriginal(w http.ResponseWriter, r *http.Request) (error, *http.Response) {
 	// Создаем клиента с настройками прокси
 	proxyInd := h.getProxy()
 	if proxyInd == -1 {
-		http.Error(w, "Error get proxy", http.StatusInternalServerError)
+		return fmt.Errorf("%s", "Error get proxy"), nil
 	}
 	h.proxy[proxyInd].IsBusy = true
 	fmt.Println(h.proxy[proxyInd].Addr)
 	dialer, err := proxy.SOCKS5("tcp", h.proxy[proxyInd].Addr, nil, proxy.Direct)
 	if err != nil {
-		fmt.Println("Ошибка при создании SOCKS5-подключения:", err)
-		return
+
+		return fmt.Errorf("%s", "Ошибка при создании SOCKS5-подключения:"), nil
 	}
 
 	// Создание HTTP-транспорта с настроенным SOCKS5-подключением
@@ -66,8 +92,7 @@ func (h *Handler) handleRequest(w http.ResponseWriter, r *http.Request) {
 	requestURL := "https://rdb.altlinux.org" + r.URL.Path
 	request, err := http.NewRequest(r.Method, requestURL, r.Body)
 	if err != nil {
-		http.Error(w, "Error creating request", http.StatusInternalServerError)
-		return
+		return fmt.Errorf("%s", "Error creating request:"), nil
 	}
 	// Аргументы запроса
 	request.URL.RawQuery = r.URL.RawQuery
@@ -78,25 +103,14 @@ func (h *Handler) handleRequest(w http.ResponseWriter, r *http.Request) {
 	response, err := client.Do(request)
 	if err != nil {
 		fmt.Println(err)
-		http.Error(w, "Error forwarding request", http.StatusInternalServerError)
-		return
+		return fmt.Errorf("%s", "Error forwarding request:"), nil
 	}
-	defer response.Body.Close()
-
-	// Копируем заголовки ответа от удаленного сервера к клиенту
-	copyHeaders(w.Header(), response.Header)
-
-	// Отправляем статус и тело ответа клиенту
-	w.WriteHeader(response.StatusCode)
-
-	io.Copy(w, response.Body)
-	//
 	go func() {
 		time.Sleep(time.Second * 1)
 
 		h.proxy[proxyInd].IsBusy = false
 	}()
-
+	return nil, response
 }
 
 func copyHeaders(dst, src http.Header) {
