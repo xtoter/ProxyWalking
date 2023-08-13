@@ -69,7 +69,8 @@ func (h *Handler) handleRequest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error creating request", http.StatusInternalServerError)
 		return
 	}
-
+	// Аргументы запроса
+	request.URL.RawQuery = r.URL.RawQuery
 	// Копируем заголовки запроса клиента к новому запросу
 	copyHeaders(request.Header, r.Header)
 
@@ -91,7 +92,7 @@ func (h *Handler) handleRequest(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, response.Body)
 	//
 	go func() {
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 1)
 
 		h.proxy[proxyInd].IsBusy = false
 	}()
