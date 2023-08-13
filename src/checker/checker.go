@@ -1,9 +1,9 @@
 package checker
 
 import (
-	"ProxyWalking/src/structs"
 	"crypto/tls"
 	"fmt"
+	"github.com/xtoter/ProxyWalking/src/structs"
 	"golang.org/x/net/proxy"
 	"io/ioutil"
 	"net/http"

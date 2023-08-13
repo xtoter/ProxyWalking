@@ -1,10 +1,10 @@
 package main
 
 import (
-	"ProxyWalking/src/checker"
-	"ProxyWalking/src/handler"
-	"ProxyWalking/src/parser"
 	"fmt"
+	"github.com/xtoter/ProxyWalking/src/checker"
+	"github.com/xtoter/ProxyWalking/src/handler"
+	"github.com/xtoter/ProxyWalking/src/parser"
 )
 
 func main() {

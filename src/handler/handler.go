@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"ProxyWalking/src/structs"
 	"crypto/tls"
 	"fmt"
+	"github.com/xtoter/ProxyWalking/src/structs"
 	"golang.org/x/net/proxy"
 	"io"
 	"net/http"
