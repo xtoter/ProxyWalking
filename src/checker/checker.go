@@ -61,7 +61,7 @@ func getDefaultResponse() []byte {
 	req.Header.Add("accept", "text/plain")
 
 	// Выполнение запроса
-	httpClient := &http.Client{}
+	httpClient := &http.Client{Timeout: time.Second * 10}
 	response, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Println("Ошибка при выполнении запроса:", err)

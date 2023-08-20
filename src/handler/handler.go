@@ -83,7 +83,7 @@ func (h *Handler) goToOriginal(w http.ResponseWriter, r *http.Request) (error, *
 	// Создание клиента HTTP с настроенным транспортом
 	client := &http.Client{
 		Transport: httpTransport,
-		Timeout:   time.Second * 25,
+		Timeout:   time.Second * 10,
 	}
 
 	//client = &http.Client{}
@@ -92,6 +92,10 @@ func (h *Handler) goToOriginal(w http.ResponseWriter, r *http.Request) (error, *
 	requestURL := "https://rdb.altlinux.org" + r.URL.Path
 	request, err := http.NewRequest(r.Method, requestURL, r.Body)
 	if err != nil {
+		go func() {
+			time.Sleep(time.Second * 30)
+			h.proxy[proxyInd].IsBusy = false
+		}()
 		return fmt.Errorf("%s", "Error creating request:"), nil
 	}
 	// Аргументы запроса
@@ -103,6 +107,10 @@ func (h *Handler) goToOriginal(w http.ResponseWriter, r *http.Request) (error, *
 	response, err := client.Do(request)
 	if err != nil {
 		fmt.Println(err)
+		go func() {
+			time.Sleep(time.Second * 30)
+			h.proxy[proxyInd].IsBusy = false
+		}()
 		return fmt.Errorf("%s", "Error forwarding request:"), nil
 	}
 	go func() {
