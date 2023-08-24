@@ -20,8 +20,11 @@ func NewHandler(proxy []structs.Proxy) *Handler {
 
 func (h *Handler) Run() {
 	http.HandleFunc("/", h.handleRequest)
-	fmt.Println("HTTP server started on :8080")
-	http.ListenAndServe(":8080", nil)
+	for {
+		_ = http.ListenAndServe(":8080", nil)
+		fmt.Println("Ошибка запуска на порту 8080, повтор через 0.5 секунд")
+		time.Sleep(500 * time.Millisecond)
+	}
 }
 func (h *Handler) getProxy() int {
 	for i, cur := range h.proxy {
@@ -36,26 +39,38 @@ func (h *Handler) handleRequest(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	var response *http.Response
-	cond := true
-	for cond {
+	counterLeft := 5
+	for counterLeft > 0 {
 		err, response = h.goToOriginal(w, r)
 		if err == nil {
-			fmt.Println("sucsess")
-			cond = false
+			counterLeft = 0
 		} else {
-			fmt.Println("error,repeat ")
+			if response != nil {
+				response.Body.Close()
+			}
+			counterLeft--
+			fmt.Println("error,repeat ", r.RemoteAddr)
 		}
 	}
+	if response == nil {
+		errorMessage := "Произошла ошибка при обработке запроса"
 
+		// Задаем статус код ошибки (например, 500 Internal Server Error)
+		w.WriteHeader(http.StatusInternalServerError)
+
+		// Записываем сообщение об ошибке в http.ResponseWriter
+		w.Write([]byte(errorMessage))
+		return
+
+	}
 	defer response.Body.Close()
 	// Копируем заголовки ответа от удаленного сервера к клиенту
 	copyHeaders(w.Header(), response.Header)
 
 	// Отправляем статус и тело ответа клиенту
 	w.WriteHeader(response.StatusCode)
-
 	io.Copy(w, response.Body)
-	//
+	fmt.Println("sucsess", r.RemoteAddr)
 
 }
 func (h *Handler) goToOriginal(w http.ResponseWriter, r *http.Request) (error, *http.Response) {
@@ -83,7 +98,7 @@ func (h *Handler) goToOriginal(w http.ResponseWriter, r *http.Request) (error, *
 	// Создание клиента HTTP с настроенным транспортом
 	client := &http.Client{
 		Transport: httpTransport,
-		Timeout:   time.Second * 10,
+		Timeout:   time.Second * 100,
 	}
 
 	//client = &http.Client{}
@@ -93,7 +108,7 @@ func (h *Handler) goToOriginal(w http.ResponseWriter, r *http.Request) (error, *
 	request, err := http.NewRequest(r.Method, requestURL, r.Body)
 	if err != nil {
 		go func() {
-			time.Sleep(time.Second * 30)
+			time.Sleep(time.Second * 300)
 			h.proxy[proxyInd].IsBusy = false
 		}()
 		return fmt.Errorf("%s", "Error creating request:"), nil
@@ -108,7 +123,7 @@ func (h *Handler) goToOriginal(w http.ResponseWriter, r *http.Request) (error, *
 	if err != nil {
 		fmt.Println(err)
 		go func() {
-			time.Sleep(time.Second * 30)
+			time.Sleep(time.Second * 300)
 			h.proxy[proxyInd].IsBusy = false
 		}()
 		return fmt.Errorf("%s", "Error forwarding request:"), nil

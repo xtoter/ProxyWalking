@@ -20,16 +20,16 @@ type checker struct {
 var wg sync.WaitGroup
 
 func NewChecker(proxy []string) *checker {
-	return &checker{testAddr: "http://ya.ru", proxy: proxy}
+	return &checker{testAddr: "https://rdb.altlinux.org/api/version", proxy: proxy}
 }
 func (c *checker) CheckActual() []structs.Proxy {
 	var result []structs.Proxy
-	defaultData := string(getDefaultResponse())
+	defaultData := string(getDefaultResponse(c.testAddr))
 	dataChannel := make(chan structs.Proxy)
 	for i, curProxy := range c.proxy {
 		wg.Add(1)
 		if i%200 == 0 {
-			time.Sleep(2 * time.Second)
+			time.Sleep(2000 * time.Millisecond)
 			fmt.Println(i, "/", len(c.proxy))
 		}
 		go checkProxy(curProxy, defaultData, dataChannel)
@@ -49,8 +49,7 @@ func (c *checker) CheckActual() []structs.Proxy {
 	fmt.Println(result)
 	return result
 }
-func getDefaultResponse() []byte {
-	requestURL := "https://rdb.altlinux.org/api/version"
+func getDefaultResponse(requestURL string) []byte {
 	req, err := http.NewRequest("GET", requestURL, nil)
 	if err != nil {
 		fmt.Println("Ошибка при создании запроса:", err)
